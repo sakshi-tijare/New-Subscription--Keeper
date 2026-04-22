@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 const Index = () => {
   const {
-    subscriptions, allSubscriptions, notifications,
+    subscriptions, allSubscriptions, notifications, projects, customCategories,
     search, setSearch,
     categoryFilter, setCategoryFilter,
     statusFilter, setStatusFilter,
@@ -87,6 +87,8 @@ const Index = () => {
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
           editData={editSub}
+          projects={projects}
+          customCategories={customCategories}
         />
       </div>
     </div>

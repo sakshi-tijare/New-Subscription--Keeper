@@ -1,11 +1,4 @@
-export type SubscriptionCategory =
-  | "Domain Name"
-  | "Server"
-  | "Google Workspace"
-  | "Software"
-  | "Cloud Service"
-  | "Streaming"
-  | "Other";
+export type SubscriptionCategory = string;
 
 export const CATEGORIES: SubscriptionCategory[] = [
   "Domain Name",
@@ -20,6 +13,7 @@ export const CATEGORIES: SubscriptionCategory[] = [
 export interface Subscription {
   id: string;
   name: string;
+  project?: string;
   category: SubscriptionCategory;
   url?: string;
   username?: string;

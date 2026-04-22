@@ -73,12 +73,31 @@ export function useSubscriptions() {
     setSubscriptions((prev) => prev.filter((s) => s.id !== id));
   };
 
+  const projects = useMemo(() => {
+    const set = new Set<string>();
+    subscriptions.forEach((s) => {
+      if (s.project) set.add(s.project);
+    });
+    return Array.from(set);
+  }, [subscriptions]);
+
+  const customCategories = useMemo(() => {
+    const set = new Set<string>();
+    subscriptions.forEach((s) => {
+      if (s.category) set.add(s.category);
+    });
+    return Array.from(set);
+  }, [subscriptions]);
+
   return {
     subscriptions: filtered,
     allSubscriptions: subscriptions,
     notifications,
+    projects,
+    customCategories,
     search,
     setSearch,
+// ...
     categoryFilter,
     setCategoryFilter,
     statusFilter,

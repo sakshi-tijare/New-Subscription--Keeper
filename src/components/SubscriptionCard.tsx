@@ -29,6 +29,11 @@ export function SubscriptionCard({ subscription: sub, onEdit, onDelete }: Subscr
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-card-foreground truncate">{sub.name}</h3>
+            {sub.project && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary text-secondary-foreground font-medium uppercase tracking-wider">
+                {sub.project}
+              </span>
+            )}
             <StatusBadge expiryDate={sub.expiryDate} />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{sub.category}</p>
@@ -45,7 +50,10 @@ export function SubscriptionCard({ subscription: sub, onEdit, onDelete }: Subscr
             {sub.price != null && (
               <div>
                 <span className="text-muted-foreground text-xs">Price</span>
-                <p className="text-card-foreground font-medium">{sub.currency || "$"}{sub.price.toFixed(2)}</p>
+                <p className="text-card-foreground font-medium">
+                  {sub.currency === "INR" ? "₹" : sub.currency === "USD" ? "$" : sub.currency || "$"}
+                  {sub.price.toFixed(2)}
+                </p>
               </div>
             )}
             {sub.username && (

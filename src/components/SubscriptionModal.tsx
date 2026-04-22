@@ -7,16 +7,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Subscription, SubscriptionCategory, CATEGORIES } from "@/types/subscription";
+import { addDays, addMonths, addYears, format, isValid, parseISO } from "date-fns";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
 
 interface SubscriptionModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: Omit<Subscription, "id">) => void;
   editData?: Subscription | null;
+  projects?: string[];
+  customCategories?: string[];
 }
 
 const emptyForm = {
   name: "",
+  project: "",
   category: "Software" as SubscriptionCategory,
   url: "",
   username: "",
@@ -27,15 +33,18 @@ const emptyForm = {
   expiryDate: "",
   price: undefined as number | undefined,
   currency: "USD",
+  durationValue: 1,
+  durationUnit: "months" as "days" | "months" | "years",
 };
 
-export function SubscriptionModal({ open, onClose, onSave, editData }: SubscriptionModalProps) {
+export function SubscriptionModal({ open, onClose, onSave, editData, projects, customCategories }: SubscriptionModalProps) {
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
     if (editData) {
       setForm({
         name: editData.name,
+        project: editData.project || "",
         category: editData.category,
         url: editData.url || "",
         username: editData.username || "",
@@ -46,14 +55,41 @@ export function SubscriptionModal({ open, onClose, onSave, editData }: Subscript
         expiryDate: editData.expiryDate,
         price: editData.price,
         currency: editData.currency || "USD",
+        durationValue: 1,
+        durationUnit: "months",
       });
     } else {
       setForm(emptyForm);
     }
   }, [editData, open]);
 
+  useEffect(() => {
+    if (form.activationDate && form.durationValue) {
+      const date = parseISO(form.activationDate);
+      if (isValid(date)) {
+        let expiry;
+        if (form.durationUnit === "days") {
+          expiry = addDays(date, form.durationValue);
+        } else if (form.durationUnit === "months") {
+          expiry = addMonths(date, form.durationValue);
+        } else {
+          expiry = addYears(date, form.durationValue);
+        }
+        update("expiryDate", format(expiry, "yyyy-MM-dd"));
+      }
+    }
+  }, [form.activationDate, form.durationValue, form.durationUnit]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.project === "_new") {
+      toast.error("Please enter a project name");
+      return;
+    }
+    if (form.category === "_new_category") {
+      toast.error("Please enter a category name");
+      return;
+    }
     onSave({
       ...form,
       price: form.price ? Number(form.price) : undefined,
@@ -73,21 +109,96 @@ export function SubscriptionModal({ open, onClose, onSave, editData }: Subscript
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
+              <Label>Project</Label>
+              <Select value={form.project} onValueChange={(v) => update("project", v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select or create project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_new">
+                    <span className="flex items-center gap-2 text-primary">
+                      <Plus className="h-4 w-4" /> Create New Project...
+                    </span>
+                  </SelectItem>
+                  {projects?.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {form.project === "_new" && (
+              <div className="sm:col-span-2">
+                <Label htmlFor="newProjectName">New Project Name *</Label>
+                <Input 
+                  id="newProjectName" 
+                  autoFocus
+                  placeholder="Enter project name"
+                  onBlur={(e) => {
+                    if (e.target.value) {
+                      update("project", e.target.value);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if ((e.target as HTMLInputElement).value) {
+                        update("project", (e.target as HTMLInputElement).value);
+                      }
+                    }
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="sm:col-span-2">
               <Label htmlFor="name">Subscription Name *</Label>
               <Input id="name" value={form.name} onChange={(e) => update("name", e.target.value)} required />
             </div>
 
             <div>
               <Label>Category</Label>
-              <Select value={form.category} onValueChange={(v) => update("category", v as SubscriptionCategory)}>
+              <Select value={form.category} onValueChange={(v) => update("category", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="_new_category">
+                    <span className="flex items-center gap-2 text-primary">
+                      <Plus className="h-4 w-4" /> Create New Category...
+                    </span>
+                  </SelectItem>
                   {CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                  {customCategories?.filter(c => !CATEGORIES.includes(c)).map((c) => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {form.category === "_new_category" && (
+              <div className="sm:col-span-2">
+                <Label htmlFor="newCategoryName">New Category Name *</Label>
+                <Input 
+                  id="newCategoryName" 
+                  autoFocus
+                  placeholder="Enter category name"
+                  onBlur={(e) => {
+                    if (e.target.value) {
+                      update("category", e.target.value);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if ((e.target as HTMLInputElement).value) {
+                        update("category", (e.target as HTMLInputElement).value);
+                      }
+                    }
+                  }}
+                />
+              </div>
+            )}
 
             <div>
               <Label htmlFor="url">URL</Label>
@@ -114,19 +225,51 @@ export function SubscriptionModal({ open, onClose, onSave, editData }: Subscript
               <Input id="activationDate" type="date" value={form.activationDate} onChange={(e) => update("activationDate", e.target.value)} required />
             </div>
 
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="durationValue">Duration</Label>
+                <Input 
+                  id="durationValue" 
+                  type="number" 
+                  min="1"
+                  value={form.durationValue} 
+                  onChange={(e) => update("durationValue", parseInt(e.target.value) || 0)} 
+                />
+              </div>
+              <div>
+                <Label>Unit</Label>
+                <Select value={form.durationUnit} onValueChange={(v: any) => update("durationUnit", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="days">Days</SelectItem>
+                    <SelectItem value="months">Months</SelectItem>
+                    <SelectItem value="years">Years</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="expiryDate">Expiry Date *</Label>
               <Input id="expiryDate" type="date" value={form.expiryDate} onChange={(e) => update("expiryDate", e.target.value)} required />
             </div>
 
-            <div>
-              <Label htmlFor="price">Price</Label>
-              <Input id="price" type="number" step="0.01" value={form.price ?? ""} onChange={(e) => update("price", e.target.value ? Number(e.target.value) : undefined)} placeholder="0.00" />
-            </div>
+            <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+              <div>
+                <Label htmlFor="price">Price</Label>
+                <Input id="price" type="number" step="0.01" value={form.price ?? ""} onChange={(e) => update("price", e.target.value ? Number(e.target.value) : undefined)} placeholder="0.00" />
+              </div>
 
-            <div>
-              <Label htmlFor="currency">Currency</Label>
-              <Input id="currency" value={form.currency} onChange={(e) => update("currency", e.target.value)} />
+              <div>
+                <Label>Currency</Label>
+                <Select value={form.currency} onValueChange={(v) => update("currency", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                    <SelectItem value="INR">INR (₹)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="sm:col-span-2">
