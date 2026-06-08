@@ -10,6 +10,16 @@ export const CATEGORIES: SubscriptionCategory[] = [
   "Other",
 ];
 
+export interface Renewal {
+  id: string;
+  date: string;
+  amount: number;
+  currency: string;
+  paymentProof?: string; // Filename or URL
+  newExpiryDate: string;
+  notes?: string;
+}
+
 export interface Subscription {
   id: string;
   name: string;
@@ -25,6 +35,7 @@ export interface Subscription {
   price?: number;
   currency?: string;
   documents?: { name: string; url: string }[];
+  renewals?: Renewal[];
 }
 
 export type SortOption = "expiry-asc" | "expiry-desc" | "name-asc" | "name-desc";

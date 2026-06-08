@@ -19,6 +19,10 @@ interface DashboardHeaderProps {
   notifications: Subscription[];
   darkMode: boolean;
   onToggleDark: () => void;
+  customCategories?: string[];
+  projectFilter: string;
+  onProjectChange: (v: string) => void;
+  projects: string[];
 }
 
 export function DashboardHeader({
@@ -28,6 +32,9 @@ export function DashboardHeader({
   sort, onSortChange,
   onAdd, notifications,
   darkMode, onToggleDark,
+  customCategories = [],
+  projectFilter, onProjectChange,
+  projects,
 }: DashboardHeaderProps) {
   return (
     <div className="space-y-4">
@@ -63,6 +70,16 @@ export function DashboardHeader({
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
             {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            {customCategories.filter(c => !CATEGORIES.includes(c)).map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={projectFilter} onValueChange={onProjectChange}>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Project" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Projects</SelectItem>
+            {projects.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={onStatusChange}>

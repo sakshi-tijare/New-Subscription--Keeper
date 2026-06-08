@@ -4,6 +4,8 @@ import { DashboardHeader } from "@/components/DashboardHeader";
 import { StatsCards } from "@/components/StatsCards";
 import { SubscriptionCard } from "@/components/SubscriptionCard";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
+import { RenewalModal } from "@/components/RenewalModal";
+import { SubscriptionTimeline } from "@/components/SubscriptionTimeline";
 import { Subscription } from "@/types/subscription";
 import { toast } from "sonner";
 
@@ -12,13 +14,17 @@ const Index = () => {
     subscriptions, allSubscriptions, notifications, projects, customCategories,
     search, setSearch,
     categoryFilter, setCategoryFilter,
+    projectFilter, setProjectFilter,
     statusFilter, setStatusFilter,
     sort, setSort,
-    addSubscription, updateSubscription, deleteSubscription,
+    addSubscription, updateSubscription, deleteSubscription, renewSubscription,
   } = useSubscriptions();
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [renewModalOpen, setRenewModalOpen] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
   const [editSub, setEditSub] = useState<Subscription | null>(null);
+  const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
@@ -33,6 +39,16 @@ const Index = () => {
   const handleEdit = (sub: Subscription) => {
     setEditSub(sub);
     setModalOpen(true);
+  };
+
+  const handleRenew = (sub: Subscription) => {
+    setSelectedSub(sub);
+    setRenewModalOpen(true);
+  };
+
+  const handleViewTimeline = (sub: Subscription) => {
+    setSelectedSub(sub);
+    setTimelineOpen(true);
   };
 
   const handleSave = (data: Omit<Subscription, "id">) => {
@@ -56,11 +72,14 @@ const Index = () => {
         <DashboardHeader
           search={search} onSearchChange={setSearch}
           categoryFilter={categoryFilter} onCategoryChange={setCategoryFilter}
+          projectFilter={projectFilter} onProjectChange={setProjectFilter}
+          projects={projects}
           statusFilter={statusFilter} onStatusChange={setStatusFilter}
           sort={sort} onSortChange={setSort}
           onAdd={handleAdd}
           notifications={notifications}
           darkMode={darkMode} onToggleDark={() => setDarkMode(!darkMode)}
+          customCategories={customCategories}
         />
 
         <StatsCards subscriptions={allSubscriptions} />
@@ -72,6 +91,8 @@ const Index = () => {
               subscription={sub}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onRenew={handleRenew}
+              onViewTimeline={handleViewTimeline}
             />
           ))}
         </div>
@@ -89,6 +110,19 @@ const Index = () => {
           editData={editSub}
           projects={projects}
           customCategories={customCategories}
+        />
+
+        <RenewalModal
+          open={renewModalOpen}
+          onClose={() => setRenewModalOpen(false)}
+          onRenew={renewSubscription}
+          subscription={selectedSub}
+        />
+
+        <SubscriptionTimeline
+          open={timelineOpen}
+          onClose={() => setTimelineOpen(false)}
+          subscription={selectedSub}
         />
       </div>
     </div>

@@ -1,13 +1,33 @@
-import { useState, useMemo } from "react";
-import { Subscription, SortOption, getDaysRemaining, getStatus } from "@/types/subscription";
-import { sampleSubscriptions } from "@/data/sampleSubscriptions";
+import { useState, useMemo, useEffect } from "react";
+import { Subscription, Renewal, SortOption, getDaysRemaining, getStatus } from "@/types/subscription";
+import { toast } from "sonner";
 
 export function useSubscriptions() {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>(sampleSubscriptions);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [projectFilter, setProjectFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortOption>("expiry-asc");
+
+  // Fetch all subscriptions from API
+  const fetchSubscriptions = async () => {
+    try {
+      const response = await fetch("/api/subscriptions");
+      if (!response.ok) {
+        throw new Error("Failed to fetch subscriptions");
+      }
+      const data = await response.json();
+      setSubscriptions(data);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error fetching subscriptions");
+    }
+  };
+
+  useEffect(() => {
+    fetchSubscriptions();
+  }, []);
 
   const filtered = useMemo(() => {
     let result = [...subscriptions];
@@ -24,6 +44,10 @@ export function useSubscriptions() {
 
     if (categoryFilter !== "all") {
       result = result.filter((s) => s.category === categoryFilter);
+    }
+
+    if (projectFilter !== "all") {
+      result = result.filter((s) => s.project === projectFilter);
     }
 
     if (statusFilter !== "all") {
@@ -46,7 +70,7 @@ export function useSubscriptions() {
     });
 
     return result;
-  }, [subscriptions, search, categoryFilter, statusFilter, sort]);
+  }, [subscriptions, search, categoryFilter, projectFilter, statusFilter, sort]);
 
   const notifications = useMemo(
     () => subscriptions.filter((s) => {
@@ -56,21 +80,97 @@ export function useSubscriptions() {
     [subscriptions]
   );
 
-  const addSubscription = (sub: Omit<Subscription, "id">) => {
-    setSubscriptions((prev) => [
-      ...prev,
-      { ...sub, id: crypto.randomUUID() },
-    ]);
+  const addSubscription = async (sub: Omit<Subscription, "id">) => {
+    try {
+      const response = await fetch("/api/subscriptions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(sub),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to add subscription");
+      }
+      const newSub = await response.json();
+      setSubscriptions((prev) => [...prev, newSub]);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error adding subscription");
+    }
   };
 
-  const updateSubscription = (id: string, data: Partial<Subscription>) => {
-    setSubscriptions((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...data } : s))
-    );
+  const updateSubscription = async (id: string, data: Partial<Subscription>) => {
+    try {
+      const currentSub = subscriptions.find((s) => s.id === id);
+      if (!currentSub) return;
+      const updatedSubData = { ...currentSub, ...data };
+
+      const response = await fetch(`/api/subscriptions/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedSubData),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update subscription");
+      }
+      const updated = await response.json();
+      setSubscriptions((prev) =>
+        prev.map((s) => (s.id === id ? updated : s))
+      );
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error updating subscription");
+    }
   };
 
-  const deleteSubscription = (id: string) => {
-    setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+  const deleteSubscription = async (id: string) => {
+    try {
+      const response = await fetch(`/api/subscriptions/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete subscription");
+      }
+      setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error deleting subscription");
+    }
+  };
+
+  const renewSubscription = async (id: string, renewal: Omit<Renewal, "id">) => {
+    try {
+      const sub = subscriptions.find((s) => s.id === id);
+      if (!sub) return;
+
+      const newRenewal = { ...renewal };
+      const updatedSubData = {
+        ...sub,
+        expiryDate: renewal.newExpiryDate,
+        renewals: [...(sub.renewals || []), newRenewal],
+      };
+
+      const response = await fetch(`/api/subscriptions/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedSubData),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to renew subscription");
+      }
+      const updated = await response.json();
+      setSubscriptions((prev) =>
+        prev.map((s) => (s.id === id ? updated : s))
+      );
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error renewing subscription");
+    }
   };
 
   const projects = useMemo(() => {
@@ -97,9 +197,10 @@ export function useSubscriptions() {
     customCategories,
     search,
     setSearch,
-// ...
     categoryFilter,
     setCategoryFilter,
+    projectFilter,
+    setProjectFilter,
     statusFilter,
     setStatusFilter,
     sort,
@@ -107,5 +208,6 @@ export function useSubscriptions() {
     addSubscription,
     updateSubscription,
     deleteSubscription,
+    renewSubscription,
   };
 }

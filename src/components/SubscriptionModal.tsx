@@ -8,8 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Subscription, SubscriptionCategory, CATEGORIES } from "@/types/subscription";
 import { addDays, addMonths, addYears, format, isValid, parseISO } from "date-fns";
-import { Plus } from "lucide-react";
+import { Plus, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 interface SubscriptionModalProps {
   open: boolean;
@@ -39,6 +42,10 @@ const emptyForm = {
 
 export function SubscriptionModal({ open, onClose, onSave, editData, projects, customCategories }: SubscriptionModalProps) {
   const [form, setForm] = useState(emptyForm);
+  const [projectSearch, setProjectSearch] = useState("");
+  const [categorySearch, setCategorySearch] = useState("");
+  const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
+  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (editData) {
@@ -110,46 +117,96 @@ export function SubscriptionModal({ open, onClose, onSave, editData, projects, c
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <Label>Project</Label>
-              <Select value={form.project} onValueChange={(v) => update("project", v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select or create project" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_new">
-                    <span className="flex items-center gap-2 text-primary">
-                      <Plus className="h-4 w-4" /> Create New Project...
-                    </span>
-                  </SelectItem>
-                  {projects?.map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className={cn(
+                      "w-full justify-between font-normal",
+                      !form.project && "text-muted-foreground"
+                    )}
+                  >
+                    {form.project || "Select or create project"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Search project..." 
+                      value={projectSearch}
+                      onValueChange={setProjectSearch}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No project found. Type to create.</CommandEmpty>
+                      {projectSearch && !projects?.includes(projectSearch) && (
+                        <CommandGroup heading="New Project">
+                          <CommandItem
+                            value={projectSearch}
+                            onSelect={() => {
+                              update("project", projectSearch);
+                              toast.success(`Selected new project: ${projectSearch}`);
+                              setProjectPopoverOpen(false);
+                              setProjectSearch("");
+                            }}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create "{projectSearch}"
+                          </CommandItem>
+                        </CommandGroup>
+                      )}
+                      {!projectSearch && (
+                        <CommandGroup>
+                          <CommandItem
+                            onSelect={() => {
+                              // Focus the command input
+                              const input = document.querySelector('[cmdk-input]') as HTMLInputElement;
+                              input?.focus();
+                            }}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create New Project...
+                          </CommandItem>
+                        </CommandGroup>
+                      )}
+                      <CommandGroup heading="Existing Projects">
+                        {form.project && !projects?.includes(form.project) && (
+                          <CommandItem
+                            value={form.project}
+                            onSelect={() => {
+                              setProjectPopoverOpen(false);
+                            }}
+                          >
+                            <Check className="mr-2 h-4 w-4 opacity-100" />
+                            {form.project} (New)
+                          </CommandItem>
+                        )}
+                        {projects?.map((p) => (
+                          <CommandItem
+                            key={p}
+                            value={p}
+                            onSelect={(v) => {
+                              update("project", v);
+                              setProjectPopoverOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                form.project === p ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {p}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
-            {form.project === "_new" && (
-              <div className="sm:col-span-2">
-                <Label htmlFor="newProjectName">New Project Name *</Label>
-                <Input 
-                  id="newProjectName" 
-                  autoFocus
-                  placeholder="Enter project name"
-                  onBlur={(e) => {
-                    if (e.target.value) {
-                      update("project", e.target.value);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if ((e.target as HTMLInputElement).value) {
-                        update("project", (e.target as HTMLInputElement).value);
-                      }
-                    }
-                  }}
-                />
-              </div>
-            )}
 
             <div className="sm:col-span-2">
               <Label htmlFor="name">Subscription Name *</Label>
@@ -158,47 +215,111 @@ export function SubscriptionModal({ open, onClose, onSave, editData, projects, c
 
             <div>
               <Label>Category</Label>
-              <Select value={form.category} onValueChange={(v) => update("category", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_new_category">
-                    <span className="flex items-center gap-2 text-primary">
-                      <Plus className="h-4 w-4" /> Create New Category...
-                    </span>
-                  </SelectItem>
-                  {CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                  {customCategories?.filter(c => !CATEGORIES.includes(c)).map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                  >
+                    {form.category}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Search category..." 
+                      value={categorySearch}
+                      onValueChange={setCategorySearch}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No category found. Type to create.</CommandEmpty>
+                      {categorySearch && !CATEGORIES.includes(categorySearch) && !customCategories?.includes(categorySearch) && (
+                        <CommandGroup heading="New Category">
+                          <CommandItem
+                            value={categorySearch}
+                            onSelect={() => {
+                              update("category", categorySearch as SubscriptionCategory);
+                              toast.success(`Selected new category: ${categorySearch}`);
+                              setCategoryPopoverOpen(false);
+                              setCategorySearch("");
+                            }}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create "{categorySearch}"
+                          </CommandItem>
+                        </CommandGroup>
+                      )}
+                      {!categorySearch && (
+                        <CommandGroup>
+                          <CommandItem
+                            onSelect={() => {
+                              // Focus the command input
+                              const input = document.querySelector('[cmdk-input]') as HTMLInputElement;
+                              input?.focus();
+                            }}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create New Category...
+                          </CommandItem>
+                        </CommandGroup>
+                      )}
+                      <CommandGroup heading="Existing Categories">
+                        {form.category && !CATEGORIES.includes(form.category) && !customCategories?.includes(form.category) && (
+                          <CommandItem
+                            value={form.category}
+                            onSelect={() => {
+                              setCategoryPopoverOpen(false);
+                            }}
+                          >
+                            <Check className="mr-2 h-4 w-4 opacity-100" />
+                            {form.category} (New)
+                          </CommandItem>
+                        )}
+                        {CATEGORIES.map((c) => (
+                          <CommandItem
+                            key={c}
+                            value={c}
+                            onSelect={(v) => {
+                              update("category", v as SubscriptionCategory);
+                              setCategoryPopoverOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                form.category === c ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {c}
+                          </CommandItem>
+                        ))}
+                        {customCategories?.filter(c => !CATEGORIES.includes(c)).map((c) => (
+                          <CommandItem
+                            key={c}
+                            value={c}
+                            onSelect={(v) => {
+                              update("category", v as SubscriptionCategory);
+                              setCategoryPopoverOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                form.category === c ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {c}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
-            {form.category === "_new_category" && (
-              <div className="sm:col-span-2">
-                <Label htmlFor="newCategoryName">New Category Name *</Label>
-                <Input 
-                  id="newCategoryName" 
-                  autoFocus
-                  placeholder="Enter category name"
-                  onBlur={(e) => {
-                    if (e.target.value) {
-                      update("category", e.target.value);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if ((e.target as HTMLInputElement).value) {
-                        update("category", (e.target as HTMLInputElement).value);
-                      }
-                    }
-                  }}
-                />
-              </div>
-            )}
 
             <div>
               <Label htmlFor="url">URL</Label>
