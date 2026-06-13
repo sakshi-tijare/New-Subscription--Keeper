@@ -40,7 +40,7 @@ export function DashboardHeader({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Subscription Manager</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Subscription Manager v1.0</h1>
           <p className="text-sm text-muted-foreground">Track and manage all your subscriptions in one place</p>
         </div>
         <div className="flex items-center gap-2">
