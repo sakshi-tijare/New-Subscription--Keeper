@@ -10,10 +10,13 @@ export function useSubscriptions() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortOption>("expiry-asc");
 
+  // Use VITE_API_URL from .env if available, otherwise default to empty string (relative path)
+  const API_URL = import.meta.env.VITE_API_URL || "";
+
   // Fetch all subscriptions from API
   const fetchSubscriptions = async () => {
     try {
-      const response = await fetch("/api/subscriptions");
+      const response = await fetch(`${API_URL}/api/subscriptions`);
       if (!response.ok) {
         throw new Error("Failed to fetch subscriptions");
       }
@@ -82,7 +85,7 @@ export function useSubscriptions() {
 
   const addSubscription = async (sub: Omit<Subscription, "id">) => {
     try {
-      const response = await fetch("/api/subscriptions", {
+      const response = await fetch(`${API_URL}/api/subscriptions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -106,7 +109,7 @@ export function useSubscriptions() {
       if (!currentSub) return;
       const updatedSubData = { ...currentSub, ...data };
 
-      const response = await fetch(`/api/subscriptions/${id}`, {
+      const response = await fetch(`${API_URL}/api/subscriptions/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -128,7 +131,7 @@ export function useSubscriptions() {
 
   const deleteSubscription = async (id: string) => {
     try {
-      const response = await fetch(`/api/subscriptions/${id}`, {
+      const response = await fetch(`${API_URL}/api/subscriptions/${id}`, {
         method: "DELETE",
       });
       if (!response.ok) {
@@ -153,7 +156,7 @@ export function useSubscriptions() {
         renewals: [...(sub.renewals || []), newRenewal],
       };
 
-      const response = await fetch(`/api/subscriptions/${id}`, {
+      const response = await fetch(`${API_URL}/api/subscriptions/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
